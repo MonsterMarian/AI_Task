@@ -7,7 +7,6 @@ __pycache__/
 
 # Local databases & persistent storage
 chroma_db/
-.env
 
 # OS specific files
 .DS_Store
