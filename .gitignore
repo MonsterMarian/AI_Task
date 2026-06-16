@@ -1,0 +1,14 @@
+# Python virtual environments
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local databases & persistent storage
+chroma_db/
+.env
+
+# OS specific files
+.DS_Store
+Thumbs.db

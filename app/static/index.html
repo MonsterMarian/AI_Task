@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentary Q&A Assistant</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="bg-glow glow-1"></div>
+  <div class="bg-glow glow-2"></div>
+
+  <header>
+    <div class="logo">
+      <i class="fa-solid fa-brain"></i> RAG Q&A <span>Documentary</span>
+    </div>
+    <div class="status-indicator">
+      <span class="badge badge-active"><i class="fa-solid fa-circle-check"></i> System Online</span>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <!-- Left Sidebar: Settings & Document Info -->
+    <aside class="sidebar">
+      <div class="card">
+        <div class="card-title">
+          <i class="fa-solid fa-file-text"></i> Active Document
+        </div>
+        <div class="info-item">
+          <span class="info-label">Title</span>
+          <span class="info-value" style="max-width: 200px; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Domestic Dangers in History</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Size</span>
+          <span class="info-value">~190 KB</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Format</span>
+          <span class="info-value">Plain Text</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <i class="fa-solid fa-gears"></i> Engine Settings
+        </div>
+        <div class="info-item">
+          <span class="info-label">Endpoint</span>
+          <span class="info-value"><code>POST /ask</code></span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Database</span>
+          <span class="info-value">ChromaDB</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Distance Metric</span>
+          <span class="info-value">Cosine</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <i class="fa-solid fa-circle-info"></i> About
+        </div>
+        <p style="font-size: 0.85rem; line-height: 1.5; color: var(--text-secondary);">
+          This assistant uses a Retrieval-Augmented Generation (RAG) system. It chunks the transcript by timestamp, indexes it in ChromaDB using embeddings, and retrieves relevant segments to answer queries.
+        </p>
+      </div>
+    </aside>
+
+    <!-- Right Area: Chat History & Input -->
+    <main class="chat-area">
+      <div class="chat-history" id="chatHistory">
+        <!-- Welcome Screen -->
+        <div class="welcome-overlay" id="welcomeScreen">
+          <div class="welcome-icon">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+          <h1 class="welcome-title">DocuMind Q&A</h1>
+          <p class="welcome-subtitle">
+            Ask any question about the documentary <em>"An Investigation into Domestic Dangers Through History"</em>. Answers are grounded strictly in the transcript text.
+          </p>
+
+          <div class="suggested-questions">
+            <button class="suggested-btn" onclick="askSuggested('Jak dopadl pokus s boraxem v mléku?')">
+              <i class="fa-solid fa-flask" style="color: var(--accent-cyan); margin-right: 8px;"></i>
+              <strong>Fakta:</strong> Jak dopadl pokus s boraxem v mléku?
+            </button>
+            <button class="suggested-btn" onclick="askSuggested('Porovnej nebezpečí ve viktoriánské a edwardské domácnosti.')">
+              <i class="fa-solid fa-scale-balanced" style="color: var(--accent-purple); margin-right: 8px;"></i>
+              <strong>Syntéza:</strong> Porovnej rizika viktoriánské a edwardské éry.
+            </button>
+            <button class="suggested-btn" onclick="askSuggested('Kdo byl Thomas Crapper a jaký vynález zachránil lidi před výbuchem?')">
+              <i class="fa-solid fa-user-astronaut" style="color: var(--accent-pink); margin-right: 8px;"></i>
+              <strong>Osoby:</strong> Vynález Thomase Crappera a metan.
+            </button>
+            <button class="suggested-btn" onclick="askSuggested('Jaká nebezpečí hrozila v kuchyních starověkého Říma?')">
+              <i class="fa-solid fa-circle-question" style="color: var(--text-muted); margin-right: 8px;"></i>
+              <strong>Neexistence:</strong> Rizika v kuchyních starověkého Říma.
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Bar -->
+      <div class="input-area">
+        <div class="input-wrapper">
+          <input type="text" class="chat-input" id="userInput" placeholder="Ask a question about the documentary..." onkeydown="handleKeyDown(event)">
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Modal Dialog for Excerpt Details -->
+  <div class="modal" id="sourceModal" onclick="closeModal(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <div class="modal-header">
+        <span class="modal-timestamp" id="modalTimestamp">00:00:00</span>
+        <h3 class="modal-title">Source Reference</h3>
+      </div>
+      <div class="modal-body" id="modalBody">
+        Excerpt text goes here...
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chatHistory = document.getElementById('chatHistory');
+    const userInput = document.getElementById('userInput');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    const sendBtn = document.getElementById('sendBtn');
+
+    // Currently active sources mapping for lookup
+    let activeSources = [];
+
+    function handleKeyDown(event) {
+      if (event.key === 'Enter') {
+        sendMessage();
+      }
+    }
+
+    function askSuggested(text) {
+      userInput.value = text;
+      sendMessage();
+    }
+
+    async function sendMessage() {
+      const text = userInput.value.trim();
+      if (!text) return;
+
+      // Clear input
+      userInput.value = '';
+
+      // Hide welcome screen on first message
+      if (welcomeScreen) {
+        welcomeScreen.style.display = 'none';
+      }
+
+      // Add user message to UI
+      appendMessage('user', text);
+
+      // Add loading state message
+      const loadingId = appendLoadingMessage();
+
+      try {
+        const response = await fetch('/ask', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ question: text }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.detail || 'Failed to fetch response');
+        }
+
+        const data = await response.json();
+        
+        // Remove loading message
+        removeMessage(loadingId);
+
+        // Add AI message to UI
+        appendMessage('ai', data.answer, data.sources);
+      } catch (err) {
+        removeMessage(loadingId);
+        appendMessage('ai', `<span style="color: var(--color-danger);"><i class="fa-solid fa-triangle-exclamation"></i> Error: ${err.message}</span>`);
+      }
+    }
+
+    function appendMessage(sender, text, sources = []) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `message message-${sender}`;
+      
+      const avatarDiv = document.createElement('div');
+      avatarDiv.className = 'avatar message-avatar';
+      avatarDiv.innerHTML = sender === 'user' ? '<i class="fa-solid fa-user"></i>' : '<i class="fa-solid fa-robot"></i>';
+      
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+      
+      // Escape HTML for safety, but allow formatting if user error message is injected
+      if (text.includes('class="fa-solid')) {
+        contentDiv.innerHTML = text;
+      } else {
+        contentDiv.textContent = text;
+      }
+      
+      // Add source tags if present
+      if (sources && sources.length > 0) {
+        const sourcesContainer = document.createElement('div');
+        sourcesContainer.className = 'sources-container';
+        
+        const header = document.createElement('div');
+        header.className = 'sources-header';
+        header.innerHTML = '<i class="fa-solid fa-quote-left"></i> Source References';
+        sourcesContainer.appendChild(header);
+        
+        const list = document.createElement('div');
+        list.className = 'sources-list';
+        
+        sources.forEach((source, index) => {
+          // Store in global lookup
+          const sourceId = `src_${Date.now()}_${index}`;
+          activeSources.push({ id: sourceId, ...source });
+          
+          const tag = document.createElement('div');
+          tag.className = 'source-tag';
+          tag.innerHTML = `<i class="fa-solid fa-clock"></i> ${source.timestamp}`;
+          tag.onclick = () => openSourceModal(sourceId);
+          list.appendChild(tag);
+        });
+        
+        sourcesContainer.appendChild(list);
+        contentDiv.appendChild(sourcesContainer);
+      }
+      
+      msgDiv.appendChild(avatarDiv);
+      msgDiv.appendChild(contentDiv);
+      chatHistory.appendChild(msgDiv);
+      
+      // Scroll to bottom
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function appendLoadingMessage() {
+      const id = 'loading_' + Date.now();
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'message message-ai';
+      msgDiv.id = id;
+      
+      const avatarDiv = document.createElement('div');
+      avatarDiv.className = 'avatar message-avatar';
+      avatarDiv.innerHTML = '<i class="fa-solid fa-robot"></i>';
+      
+      const contentDiv = document.createElement('div');
+      contentDiv.className = 'message-content';
+      contentDiv.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" style="color: var(--accent-cyan); margin-right: 8px;"></i> Thinking...';
+      
+      msgDiv.appendChild(avatarDiv);
+      msgDiv.appendChild(contentDiv);
+      chatHistory.appendChild(msgDiv);
+      chatHistory.scrollTop = chatHistory.scrollHeight;
+      return id;
+    }
+
+    function removeMessage(id) {
+      const el = document.getElementById(id);
+      if (el) {
+        el.remove();
+      }
+    }
+
+    function openSourceModal(sourceId) {
+      const source = activeSources.find(s => s.id === sourceId);
+      if (!source) return;
+      
+      document.getElementById('modalTimestamp').textContent = source.timestamp;
+      document.getElementById('modalBody').textContent = source.excerpt;
+      
+      const modal = document.getElementById('sourceModal');
+      modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('sourceModal').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
