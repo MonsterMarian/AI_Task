@@ -102,7 +102,7 @@ pytest
 
 ---
 
-## 💡 Key Design Decisions & "Chytáky" (Traps)
+## 💡 Key Design Decisions & Traps
 
 1. **Cross-Lingual Search**: Because the transcript is in English but user questions are in Czech, we implement an LLM-based query translation step before querying ChromaDB. This yields significantly higher cosine similarity matches.
 2. **Era Synthesis**: Standard vector search tends to cluster documents in a single era. For comparison queries, the LLM splits the question into Victorian and Edwardian sub-queries, queries ChromaDB for both, and merges the results to build a balanced context.

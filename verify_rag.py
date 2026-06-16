@@ -49,31 +49,31 @@ def main():
     
     test_cases = [
         {
-            "name": "Scenario 1: Factual Question (Fakta)",
+            "name": "Scenario 1: Factual Question",
             "query": "Jak dopadl pokus s boraxem v mléku?",
             "validator": lambda ans, sources: any("00:10:33" in s["timestamp"] for s in sources) or any("00:11:30" in s["timestamp"] for s in sources),
             "validation_msg": "Should return sources with timestamp around 00:10:33 or 00:11:30."
         },
         {
-            "name": "Scenario 2: Synthesis Question (Syntéza)",
+            "name": "Scenario 2: Synthesis Question",
             "query": "Porovnej nebezpečí a rizika ve viktoriánské a edwardské domácnosti.",
             "validator": lambda ans, sources: any(s["timestamp"] < "00:58:00" for s in sources) and any(s["timestamp"] >= "00:58:00" for s in sources),
             "validation_msg": "Should retrieve sources from both Victorian (< 00:58:00) and Edwardian (>= 00:58:00) periods."
         },
         {
-            "name": "Scenario 3: Named Person/Location (Vynálezci)",
+            "name": "Scenario 3: Named Person / Location",
             "query": "Kdo byl Thomas Crapper a jaký vynález zachránil lidi před výbuchem?",
             "validator": lambda ans, sources: "crapper" in ans.lower() or "sifon" in ans.lower() or "ventil" in ans.lower() or "methan" in ans.lower(),
             "validation_msg": "Should mention Thomas Crapper, the siphon valve / water trap, or methane."
         },
         {
-            "name": "Scenario 4: Vague/Broad Question (Široká)",
+            "name": "Scenario 4: Vague / Broad Question",
             "query": "Jak lidé v historii bojovali s nečistotou a jaké to mělo následky?",
             "validator": lambda ans, sources: len(ans) > 50,
             "validation_msg": "Should answer in natural language based on transcript history (washing, laundry, mangles, gas baths)."
         },
         {
-            "name": "Scenario 5: Out of Scope Question (Neexistence)",
+            "name": "Scenario 5: Out of Scope Question",
             "query": "Jaká nebezpečí hrozila v kuchyních starověkého Říma?",
             "validator": lambda ans, sources: ans == "I am sorry, but the provided material does not contain an answer to this question." and len(sources) == 0,
             "validation_msg": "Should reply exactly with: 'I am sorry...' and return empty sources."
