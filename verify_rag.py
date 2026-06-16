@@ -37,9 +37,9 @@ def main():
     try:
         client = get_chroma_client()
         ingest_data(client)
-        print(f"{Colors.GREEN}✓ Database is populated.{Colors.ENDC}")
+        print(f"{Colors.GREEN}[OK] Database is populated.{Colors.ENDC}")
     except Exception as e:
-        print(f"{Colors.FAIL}✗ Database initialization failed: {e}{Colors.ENDC}")
+        print(f"{Colors.FAIL}[FAIL] Database initialization failed: {e}{Colors.ENDC}")
         print(f"{Colors.WARNING}Please make sure GEMINI_API_KEY is set in '.env' or Ollama is running.{Colors.ENDC}")
         sys.exit(1)
     print_separator()
@@ -98,12 +98,12 @@ def main():
             # Run validator
             is_valid = tc["validator"](answer, sources)
             if is_valid:
-                print(f"{Colors.GREEN}✓ VALIDATED{Colors.ENDC}")
+                print(f"{Colors.GREEN}[OK] VALIDATED{Colors.ENDC}")
                 passed_count += 1
             else:
-                print(f"{Colors.WARNING}⚠ VALIDATION WARNING: {tc['validation_msg']}{Colors.ENDC}")
+                print(f"{Colors.WARNING}[WARN] VALIDATION WARNING: {tc['validation_msg']}{Colors.ENDC}")
         except Exception as e:
-            print(f"{Colors.FAIL}✗ ERROR running query: {e}{Colors.ENDC}")
+            print(f"{Colors.FAIL}[FAIL] ERROR running query: {e}{Colors.ENDC}")
             
         print_separator()
 
@@ -111,9 +111,9 @@ def main():
     print(f"{Colors.BOLD}[3/3] Final Report{Colors.ENDC}")
     print(f"Passed: {passed_count}/{len(test_cases)}")
     if passed_count == len(test_cases):
-        print(f"{Colors.GREEN}{Colors.BOLD}ALL SCENARIOS COMPLETED SUCCESSFULLY! ✓{Colors.ENDC}")
+        print(f"{Colors.GREEN}{Colors.BOLD}ALL SCENARIOS COMPLETED SUCCESSFULLY! [OK]{Colors.ENDC}")
     else:
-        print(f"{Colors.WARNING}Completed with some warnings. Please check details above. ⚠{Colors.ENDC}")
+        print(f"{Colors.WARNING}Completed with some warnings. Please check details above. [WARN]{Colors.ENDC}")
 
 if __name__ == "__main__":
     main()

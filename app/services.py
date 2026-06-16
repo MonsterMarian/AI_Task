@@ -1,4 +1,5 @@
 import logging
+import time
 import google.generativeai as genai
 import httpx
 from app.config import settings
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 def get_embeddings(texts: list[str], task_type: str = "retrieval_document") -> list[list[float]]:
     """
     Generates embeddings for a list of texts using the configured provider.
-    - Gemini: uses text-embedding-004.
+    - Gemini: uses gemini-embedding-001.
     - Ollama: calls /api/embeddings.
     """
     if settings.llm_provider == "gemini":
@@ -30,17 +31,28 @@ def get_embeddings(texts: list[str], task_type: str = "retrieval_document") -> l
         all_embeddings = []
         for i in range(0, len(texts), batch_size):
             batch = texts[i:i+batch_size]
-            try:
-                response = genai.embed_content(
-                    model=model_name,
-                    content=batch,
-                    task_type=task_type
-                )
-                all_embeddings.extend(response["embedding"])
-            except Exception as e:
-                logger.error(f"Gemini embedding generation failed: {e}")
-                raise e
+            for attempt in range(6):
+                try:
+                    response = genai.embed_content(
+                        model=model_name,
+                        content=batch,
+                        task_type=task_type
+                    )
+                    all_embeddings.extend(response["embedding"])
+                    # Small sleep to protect against free-tier rate limits
+                    time.sleep(1.0)
+                    break
+                except Exception as e:
+                    err_str = str(e).lower()
+                    if ("429" in err_str or "quota" in err_str or "exhausted" in err_str or "rate" in err_str) and attempt < 5:
+                        sleep_time = (attempt + 1) * 10
+                        logger.warning(f"Rate limit / Quota exceeded. Retrying batch {i//batch_size + 1} in {sleep_time}s... (Attempt {attempt+1}/6)")
+                        time.sleep(sleep_time)
+                    else:
+                        logger.error(f"Gemini embedding generation failed: {e}")
+                        raise e
         return all_embeddings
+
 
     elif settings.llm_provider == "ollama":
         all_embeddings = []
@@ -79,14 +91,23 @@ def get_llm_response(prompt: str) -> str:
                 "GEMINI_API_KEY environment variable is not set. "
                 "Please add it to your .env file or change LLM_PROVIDER to 'ollama'."
             )
-        try:
-            genai.configure(api_key=settings.gemini_api_key)
-            model = genai.GenerativeModel(settings.llm_model)
-            response = model.generate_content(prompt)
-            return response.text.strip()
-        except Exception as e:
-            logger.error(f"Gemini LLM call failed: {e}")
-            raise e
+        
+        for attempt in range(6):
+            try:
+                genai.configure(api_key=settings.gemini_api_key)
+                model = genai.GenerativeModel(settings.llm_model)
+                response = model.generate_content(prompt)
+                return response.text.strip()
+            except Exception as e:
+                err_str = str(e).lower()
+                if ("429" in err_str or "quota" in err_str or "exhausted" in err_str or "rate" in err_str) and attempt < 5:
+                    sleep_time = (attempt + 1) * 10
+                    logger.warning(f"Rate limit / Quota exceeded on LLM call. Retrying in {sleep_time}s... (Attempt {attempt+1}/6)")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error(f"Gemini LLM call failed: {e}")
+                    raise e
+
 
     elif settings.llm_provider == "ollama":
         try:
