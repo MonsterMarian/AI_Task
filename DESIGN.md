@@ -57,9 +57,16 @@ Strict Rules:
 
 ---
 
-## 4. Future Improvements
+## 4. Model Cascade & Latency
+
+To handle API quota limits and transient server-side unavailability (HTTP 429 / 503), the service implements an automatic **model cascade**: it tries the primary model (`gemini-2.5-flash`) first, then falls back through an ordered list of alternative Gemini models until one succeeds. This makes the service resilient to rate-limits at the cost of occasional latency spikes (typically an extra 5–15 s per fallback step). Under normal load, end-to-end response time is 6–16 seconds.
+
+---
+
+## 5. Future Improvements
 
 Given more time, we would implement:
 1. **Hybrid Search**: Combine dense vector embeddings with sparse keyword search (BM25) to improve retrieval of exact numbers, chemicals, and rare names (e.g. *Lucy Dean*, *Thomas Crapper*).
 2. **Sliding Window Merging**: When a retrieved chunk is selected, also pull its adjacent chunk (+/- 1 minute) to provide the LLM with surrounding context, ensuring smooth transitions.
 3. **Metadata Filtering**: Add filters based on parsed eras (Victorian, Edwardian, Tudor) to quickly restrict or bias search space when the query mentions an era.
+4. **Streaming responses**: Stream tokens back to the client for a more responsive UX, while still assembling the final JSON for validation.
