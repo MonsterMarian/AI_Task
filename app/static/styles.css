@@ -528,3 +528,19 @@ header {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-amber);
 }
+
+/* Disabled State Styling */
+.chat-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background-color: rgba(255, 255, 255, 0.01);
+  box-shadow: none;
+}
+
+.send-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+

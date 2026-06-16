@@ -5,8 +5,8 @@ class QuestionRequest(BaseModel):
     question: str
 
 class SourceReference(BaseModel):
-    timestamp: str  # Formát HH:MM:SS nebo MM:SS vytažený z metadat
-    excerpt: str    # Krátký výsek textu, ze kterého se čerpalo
+    timestamp: str  # Format HH:MM:SS or MM:SS extracted from chunk metadata
+    excerpt: str    # Short text excerpt from the source chunk
 
 class QuestionResponse(BaseModel):
     answer: str

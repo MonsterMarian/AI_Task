@@ -21,7 +21,7 @@ We chunk the transcript using the **timestamp lines** (e.g. `00:10:33`) as bound
 ### Library & Embeddings
 - We use **ChromaDB** as our vector database with `cosine` similarity (configured via `metadata={"hnsw:space": "cosine"}`).
 - Embeddings are generated dynamically using the configured provider:
-  - **Gemini**: Uses the `text-embedding-004` model.
+  - **Gemini**: Uses the `gemini-embedding-001` model via the `google-genai` SDK.
   - **Ollama**: Uses `nomic-embed-text` (or any other locally configured model).
 
 ### Handling Czech-to-English Retrieval (Trap #1)

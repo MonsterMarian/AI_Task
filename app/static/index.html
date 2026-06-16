@@ -137,21 +137,30 @@
 
     // Currently active sources mapping for lookup
     let activeSources = [];
+    let isRequestInProgress = false;
 
     function handleKeyDown(event) {
-      if (event.key === 'Enter') {
+      if (event.key === 'Enter' && !isRequestInProgress) {
         sendMessage();
       }
     }
 
     function askSuggested(text) {
+      if (isRequestInProgress) return;
       userInput.value = text;
       sendMessage();
     }
 
     async function sendMessage() {
+      if (isRequestInProgress) return;
       const text = userInput.value.trim();
       if (!text) return;
+
+      // Lock input and send button
+      isRequestInProgress = true;
+      userInput.disabled = true;
+      sendBtn.disabled = true;
+      userInput.placeholder = "Processing your query...";
 
       // Clear input
       userInput.value = '';
@@ -191,6 +200,13 @@
       } catch (err) {
         removeMessage(loadingId);
         appendMessage('ai', `<span style="color: var(--color-danger);"><i class="fa-solid fa-triangle-exclamation"></i> Error: ${err.message}</span>`);
+      } finally {
+        // Unlock inputs
+        isRequestInProgress = false;
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        userInput.placeholder = "Ask a question about the documentary...";
+        userInput.focus();
       }
     }
 

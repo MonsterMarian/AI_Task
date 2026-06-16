@@ -56,24 +56,13 @@ def get_chroma_client():
 
 def ingest_data(client, force: bool = False):
     """
-    Checks if ChromaDB contains the transcript chunks.
+    Checks if ChromaDB contains the correct amount of transcript chunks.
     If not, parses the transcript, generates embeddings, and stores them in ChromaDB.
+    Clears collection on failures to prevent partial/corrupt states.
     """
     from app.services import get_embeddings  # import here to avoid circular imports
 
-    collection = client.get_or_create_collection(
-        name="documentary_transcript",
-        metadata={"hnsw:space": "cosine"}
-    )
-
-    doc_count = collection.count()
-    if doc_count > 0 and not force:
-        logger.info(f"Database already populated with {doc_count} documents. Skipping ingestion.")
-        return
-
-    logger.info("Starting data ingestion...")
     transcript_path = os.path.join("data", "transcript.txt")
-    
     try:
         chunks = parse_transcript(transcript_path)
     except FileNotFoundError as e:
@@ -83,6 +72,34 @@ def ingest_data(client, force: bool = False):
     if not chunks:
         logger.warning("No chunks parsed from transcript. Ingestion aborted.")
         return
+
+    collection_name = "documentary_transcript"
+
+    # Check existing collection
+    try:
+        collection = client.get_collection(name=collection_name)
+        doc_count = collection.count()
+    except Exception:
+        # Collection does not exist
+        collection = None
+        doc_count = 0
+
+    if doc_count == len(chunks) and not force:
+        logger.info(f"Database already correctly populated with {doc_count} documents. Skipping ingestion.")
+        return
+
+    logger.info("Database empty, incomplete, or force-reingest triggered. Preparing ingestion...")
+
+    # Recreate the collection
+    try:
+        client.delete_collection(name=collection_name)
+    except Exception:
+        pass  # If it didn't exist
+
+    collection = client.create_collection(
+        name=collection_name,
+        metadata={"hnsw:space": "cosine"}
+    )
 
     logger.info(f"Parsed {len(chunks)} chunks from transcript. Generating embeddings...")
 
@@ -94,22 +111,34 @@ def ingest_data(client, force: bool = False):
         embeddings = get_embeddings(texts, task_type="retrieval_document")
     except Exception as e:
         logger.error(f"Failed to generate embeddings: {e}")
-        logger.error("Please verify your API keys or Ollama connection and run ingestion again.")
+        # Delete incomplete collection so we don't leave it corrupted
+        try:
+            client.delete_collection(name=collection_name)
+        except Exception:
+            pass
         raise e
 
-    # Add in batches of 100 to avoid ChromaDB batch limits
-    batch_size = 100
-    for i in range(0, len(chunks), batch_size):
-        batch_ids = ids[i:i+batch_size]
-        batch_texts = texts[i:i+batch_size]
-        batch_embeddings = embeddings[i:i+batch_size]
-        batch_metadatas = metadatas[i:i+batch_size]
+    try:
+        # Add in batches of 100 to avoid ChromaDB batch limits
+        batch_size = 100
+        for i in range(0, len(chunks), batch_size):
+            batch_ids = ids[i:i+batch_size]
+            batch_texts = texts[i:i+batch_size]
+            batch_embeddings = embeddings[i:i+batch_size]
+            batch_metadatas = metadatas[i:i+batch_size]
 
-        collection.add(
-            ids=batch_ids,
-            documents=batch_texts,
-            embeddings=batch_embeddings,
-            metadatas=batch_metadatas
-        )
+            collection.add(
+                ids=batch_ids,
+                documents=batch_texts,
+                embeddings=batch_embeddings,
+                metadatas=batch_metadatas
+            )
+    except Exception as e:
+        logger.error(f"Failed to populate ChromaDB collection: {e}")
+        try:
+            client.delete_collection(name=collection_name)
+        except Exception:
+            pass
+        raise e
 
     logger.info(f"Successfully ingested {len(chunks)} chunks into ChromaDB.")
